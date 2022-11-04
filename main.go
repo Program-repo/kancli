@@ -3,10 +3,9 @@ package main
 import (
 	"fmt"
 	"os"
+	"strconv"
 
 	"github.com/charmbracelet/bubbles/list"
-	"github.com/charmbracelet/bubbles/textarea"
-	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -15,6 +14,8 @@ type status int
 
 const divisor = 4
 
+var counter int
+
 const (
 	todo status = iota
 	inProgress
@@ -22,24 +23,22 @@ const (
 )
 
 /* MODEL MANAGEMENT */
-var models []tea.Model
-
-const (
-	model status = iota
-	form
-)
 
 /* STYLING */
 var (
-	columnStyle = lipgloss.NewStyle().
-			Padding(1, 2).
-			Border(lipgloss.HiddenBorder())
 	focusedStyle = lipgloss.NewStyle().
-			Padding(1, 2).
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("62"))
-	helpStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("241"))
+			Border(lipgloss.NormalBorder(), true, true, true, true).
+			BorderBackground(lipgloss.AdaptiveColor{Light: "#43BFfD", Dark: "#73F5fd"}).
+			BorderStyle(lipgloss.Border{Top: " "}).
+			MarginRight(2)
+	columnStyle = lipgloss.NewStyle().
+			Border(lipgloss.NormalBorder(), true, true, true, true).
+			BorderBackground(lipgloss.AdaptiveColor{Light: "#0000ff", Dark: "#0000ff"}).
+			BorderStyle(lipgloss.Border{Top: " "}).
+			MarginRight(2)
+
+	// helpStyle = lipgloss.NewStyle().
+	// 		Foreground(lipgloss.Color("241"))
 )
 
 /* CUSTOM ITEM */
@@ -48,10 +47,6 @@ type Task struct {
 	status      status
 	title       string
 	description string
-}
-
-func NewTask(status status, title, description string) Task {
-	return Task{status: status, title: title, description: description}
 }
 
 func (t *Task) Next() {
@@ -63,9 +58,7 @@ func (t *Task) Next() {
 }
 
 // implement the list.Item interface
-func (t Task) FilterValue() string {
-	return t.title
-}
+func (t Task) FilterValue() string { return "" }
 
 func (t Task) Title() string {
 	return t.title
@@ -98,14 +91,6 @@ func (m *Model) MoveToNext() tea.Msg {
 	return nil
 }
 
-func (m *Model) DeleteCurrent() tea.Msg {
-	if len(m.lists[m.focused].VisibleItems()) > 0 {
-		selectedTask := m.lists[m.focused].SelectedItem().(Task)
-		m.lists[selectedTask.status].RemoveItem(m.lists[m.focused].Index())
-	}
-	return nil
-}
-
 func (m *Model) Next() {
 	if m.focused == done {
 		m.focused = todo
@@ -123,11 +108,13 @@ func (m *Model) Prev() {
 }
 
 func (m *Model) initLists(width, height int) {
-	defaultList := list.New([]list.Item{}, list.NewDefaultDelegate(), width/divisor, height/2)
+	defaultList := list.New([]list.Item{}, list.NewDefaultDelegate(), width/divisor, 15) //height/2)
 	defaultList.SetShowHelp(false)
 	m.lists = []list.Model{defaultList, defaultList, defaultList}
-
+	// list.DefaultDelegate.SetSpacing
 	// Init To Do
+	m.lists[todo].SetFilteringEnabled(false)
+	m.lists[todo].SetShowStatusBar(false)
 	m.lists[todo].Title = "To Do"
 	m.lists[todo].SetItems([]list.Item{
 		Task{status: todo, title: "buy milk", description: "strawberry milk"},
@@ -135,11 +122,15 @@ func (m *Model) initLists(width, height int) {
 		Task{status: todo, title: "fold laundry", description: "or wear wrinkly t-shirts"},
 	})
 	// Init in progress
+	m.lists[inProgress].SetFilteringEnabled(false)
+	m.lists[inProgress].SetShowStatusBar(false)
 	m.lists[inProgress].Title = "In Progress"
 	m.lists[inProgress].SetItems([]list.Item{
 		Task{status: inProgress, title: "write code", description: "don't worry, it's Go"},
 	})
 	// Init done
+	m.lists[done].SetFilteringEnabled(false)
+	m.lists[done].SetShowStatusBar(false)
 	m.lists[done].Title = "Done"
 	m.lists[done].SetItems([]list.Item{
 		Task{status: done, title: "stay cool", description: "as a cucumber"},
@@ -156,9 +147,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if !m.loaded {
 			columnStyle.Width(msg.Width / divisor)
 			focusedStyle.Width(msg.Width / divisor)
-			columnStyle.Height(msg.Height - divisor)
-			focusedStyle.Height(msg.Height - divisor)
-			m.initLists(msg.Width, msg.Height)
+			columnStyle.Height(15)     //msg.Height - divisor)
+			focusedStyle.Height(15)    //(msg.Height - divisor)
+			m.initLists(msg.Width, 15) //msg.Height)
 			m.loaded = true
 		}
 	case tea.KeyMsg:
@@ -172,16 +163,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.Next()
 		case "enter":
 			return m, m.MoveToNext
-		case "n":
-			models[model] = m // save the state of the current model
-			models[form] = NewForm(m.focused)
-			return models[form].Update(nil)
-		case "d":
-			return m, m.DeleteCurrent
 		}
-	case Task:
-		task := msg
-		return m, m.lists[task.status].InsertItem(len(m.lists[task.status].Items()), task)
 	}
 	var cmd tea.Cmd
 	m.lists[m.focused], cmd = m.lists[m.focused].Update(msg)
@@ -220,69 +202,14 @@ func (m Model) View() string {
 			)
 		}
 	} else {
-		return "loading..."
+		counter++
+		return "loading..." + strconv.Itoa(counter)
 	}
-}
-
-/* FORM MODEL */
-type Form struct {
-	focused     status
-	title       textinput.Model
-	description textarea.Model
-}
-
-func NewForm(focused status) *Form {
-	form := &Form{focused: focused}
-	form.title = textinput.New()
-	form.title.Focus()
-	form.description = textarea.New()
-	return form
-}
-
-func (m Form) CreateTask() tea.Msg {
-	task := NewTask(m.focused, m.title.Value(), m.description.Value())
-	return task
-}
-
-func (m Form) Init() tea.Cmd {
-	return nil
-}
-
-func (m Form) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch msg.String() {
-		case "ctrl+c", "q":
-			return m, tea.Quit
-		case "enter":
-			if m.title.Focused() {
-				m.title.Blur()
-				m.description.Focus()
-				return m, textarea.Blink
-			} else {
-				models[form] = m
-				return models[model], m.CreateTask
-			}
-		}
-	}
-	if m.title.Focused() {
-		m.title, cmd = m.title.Update(msg)
-		return m, cmd
-	} else {
-		m.description, cmd = m.description.Update(msg)
-		return m, cmd
-	}
-}
-
-func (m Form) View() string {
-	return lipgloss.JoinVertical(lipgloss.Left, m.title.View(), m.description.View())
 }
 
 func main() {
-	models = []tea.Model{New(), NewForm(todo)}
-	m := models[model]
-	p := tea.NewProgram(m)
+	m := New()
+	p := tea.NewProgram(m, tea.WithAltScreen())
 	if err := p.Start(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
