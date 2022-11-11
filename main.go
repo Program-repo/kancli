@@ -10,6 +10,50 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+// type DefaultDelegate struct {
+// 	ShowDescription bool
+// }
+
+// func (d *DefaultDelegate) SetShowDescription() {
+// 	d.ShowDescription = true
+// }
+
+// var (
+// 	titleStyle        = lipgloss.NewStyle().MarginLeft(2)
+// 	itemStyle         = lipgloss.NewStyle().PaddingLeft(4)
+// 	selectedItemStyle = lipgloss.NewStyle().PaddingLeft(2).Foreground(lipgloss.Color("170"))
+// 	paginationStyle   = list.DefaultStyles().PaginationStyle.PaddingLeft(4)
+// 	helpStyle         = list.DefaultStyles().HelpStyle.PaddingLeft(4).PaddingBottom(1)
+// 	quitTextStyle     = lipgloss.NewStyle().Margin(1, 0, 2, 4)
+// )
+
+type item string
+
+func (i item) FilterValue() string { return "" }
+
+// type itemDelegate struct{}
+
+// func (d itemDelegate) Height() int                               { return 1 }
+// func (d itemDelegate) Spacing() int                              { return 0 }
+// func (d itemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd { return nil }
+// func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
+// 	i, ok := listItem.(item)
+// 	if !ok {
+// 		return
+// 	}
+
+// 	str := fmt.Sprintf("%d. %s", index+1, i)
+
+// 	fn := itemStyle.Render
+// 	if index == m.Index() {
+// 		fn = func(s string) string {
+// 			return selectedItemStyle.Render("> " + s)
+// 		}
+// 	}
+
+// 	fmt.Fprint(w, fn(str))
+// }
+
 type status int
 
 const divisor = 4
@@ -45,6 +89,7 @@ var (
 
 type Task struct {
 	status      status
+	verified    bool
 	title       string
 	description string
 }
@@ -82,12 +127,27 @@ func New() *Model {
 	return &Model{}
 }
 
+// func (m *Model) itemDone() tea.Msg {
+// selectedItem := m.lists[m.focused].SelectedItem()
+// selectedTask := selectedItem.(Task)
+// list.Item(selectedTask)
+// selectedItem.(status: todo, done: true, title: "buy milk", description: "strawberry milk")
+// 	return nil
+// }
+
 func (m *Model) MoveToNext() tea.Msg {
 	selectedItem := m.lists[m.focused].SelectedItem()
 	selectedTask := selectedItem.(Task)
+	fmt.Println(selectedItem)
+	fmt.Println(selectedTask)
+	// fmt.Println(selectedTask.description)
+	// fmt.Println(m.lists[m.focused].Index())
+	// m.lists[selectedTask.status] [m.lists[m.focused].Index()]
+
 	m.lists[selectedTask.status].RemoveItem(m.lists[m.focused].Index())
 	selectedTask.Next()
 	m.lists[selectedTask.status].InsertItem(len(m.lists[selectedTask.status].Items())-1, list.Item(selectedTask))
+
 	return nil
 }
 
@@ -108,11 +168,13 @@ func (m *Model) Prev() {
 }
 
 func (m *Model) initLists(width, height int) {
+
 	defaultList := list.New([]list.Item{}, list.NewDefaultDelegate(), width/divisor, 15) //height/2)
+	// defaultList := list.New([]list.Item{}, itemDelegate{}, width/divisor, 15) //height/2)
 	defaultList.SetShowHelp(false)
 	m.lists = []list.Model{defaultList, defaultList, defaultList}
 	// list.DefaultDelegate.SetSpacing
-	// Init To Do
+	// Init To Do)
 	m.lists[todo].SetFilteringEnabled(false)
 	m.lists[todo].SetShowStatusBar(false)
 	m.lists[todo].Title = "To Do"
@@ -163,6 +225,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.Next()
 		case "enter":
 			return m, m.MoveToNext
+			// return m, m.itemDone
 		}
 	}
 	var cmd tea.Cmd
