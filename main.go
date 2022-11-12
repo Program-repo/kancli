@@ -6,11 +6,16 @@ import (
 	"io/ioutil"
 	"os"
 	"strconv"
+	"time"
 
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
+	"github.com/charmbracelet/bubbles/timer"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
+
+const timeout = time.Second * 5
 
 type item string
 
@@ -21,6 +26,13 @@ const divisor = 4
 var maxCol = 2
 
 var counter int
+
+type keymap struct {
+	start key.Binding
+	stop  key.Binding
+	reset key.Binding
+	quit  key.Binding
+}
 
 /* MODEL MANAGEMENT */
 
@@ -51,10 +63,9 @@ type Task struct {
 }
 
 func (t *Task) Next() {
-	if t.status == maxCol {
+	t.status++
+	if t.status >= maxCol {
 		t.status = 0
-	} else {
-		t.status++
 	}
 }
 
@@ -72,6 +83,8 @@ func (t Task) Description() string {
 /* MAIN MODEL */
 
 type Model struct {
+	timer    timer.Model
+	keymap   keymap
 	loaded   bool
 	focused  int //status
 	lists    []list.Model
@@ -180,10 +193,28 @@ func (m *Model) initLists(width, height int) {
 		m.lists[i].SetFilteringEnabled(false)
 		m.lists[i].SetShowStatusBar(false)
 		m.lists[i].Title = tickets.Tickets[i].TicketId
-		m.lists[i].SetItems([]list.Item{
-			Task{status: i, title: tickets.Tickets[i].DetailLine.Detail},
-		})
 
+		var taskslines []Task
+		for j := 0; j < len(tickets.Tickets[i].DetailLine.Detail); j++ {
+			taskslines = append(taskslines, Task{status: i, title: tickets.Tickets[i].DetailLine.Detail[j]})
+		}
+		var ll []list.Item
+		// // ll = []list.Item{}{[]taskslines}
+		for j := 0; j < len(tickets.Tickets[i].DetailLine.Detail); j++ {
+			ll = append(ll, taskslines[j])
+		}
+
+		// all := append([]interface{}, tasklines)
+		// fmt.Println(all)
+
+		// fmt.Println(taskslines)
+		// m.lists[i].SetItems([]list.Item{taskslines[0], taskslines[1], taskslines[2], taskslines[3]})
+		m.lists[i].SetItems(ll)
+
+		// fmt.Println(strconv.Itoa(len(tickets.Tickets[i].DetailLine.Detail)))
+		// for j := 0; j < len(tickets.Tickets[i].DetailLine.Detail); j++ {
+		// 	m.lists[i].SetItems([]list.Item{Task{status: i, title: tickets.Tickets[i].DetailLine.Detail[j]}})
+		// }
 	}
 }
 
@@ -201,15 +232,32 @@ type Ticket struct {
 
 // list of links
 type DetailLine struct {
-	Detail string `json:"detail"`
+	Detail []string `json:"detail"`
 }
 
 func (m Model) Init() tea.Cmd {
-	return nil
+	return m.timer.Init()
+	// return nil
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+
+	case timer.TickMsg:
+		var cmd tea.Cmd
+		m.timer, cmd = m.timer.Update(msg)
+		return m, cmd
+
+	case timer.StartStopMsg:
+		var cmd tea.Cmd
+		m.timer, cmd = m.timer.Update(msg)
+		m.keymap.stop.SetEnabled(m.timer.Running())
+		m.keymap.start.SetEnabled(!m.timer.Running())
+		return m, cmd
+
+	case timer.TimeoutMsg:
+		m.quitting = true
+		return m, tea.Quit
 	case tea.WindowSizeMsg:
 		if !m.loaded {
 			columnStyle.Width(msg.Width / divisor)
@@ -228,11 +276,28 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.Prev()
 		case "right", "l":
 			m.Next()
+		// The "up" and "k" keys move the cursor up
+		case "up", "k":
+
+		// The "down" and "j" keys move the cursor down
+		case "down", "j":
 		case "enter":
 			// return m, m.MoveToNext
 			// return m, m.itemDone
 		}
+
+		// case tea.KeyMsg:
+		// 	switch {
+		// 	case key.Matches(msg, m.keymap.quit):
+		// 		m.quitting = true
+		// 		return m, tea.Quit
+		// 	case key.Matches(msg, m.keymap.reset):
+		// 		m.timer.Timeout = timeout
+		// 	case key.Matches(msg, m.keymap.start, m.keymap.stop):
+		// 		return m, m.timer.Toggle()
+		// 	}
 	}
+
 	var cmd tea.Cmd
 	m.lists[m.focused], cmd = m.lists[m.focused].Update(msg)
 	return m, cmd
@@ -242,7 +307,7 @@ func (m Model) View() string {
 	if m.quitting {
 		return ""
 	}
-
+	s := m.timer.View()
 	var xRender []string
 	if m.loaded {
 		for i := 0; i <= maxCol; i++ {
@@ -257,7 +322,7 @@ func (m Model) View() string {
 		counter++
 		return "loading..." + strconv.Itoa(counter)
 	}
-	return lipgloss.JoinHorizontal(
+	return s + lipgloss.JoinHorizontal(
 		lipgloss.Left,
 		xRender...,
 	)

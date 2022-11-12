@@ -4,21 +4,21 @@
         "ticketid": "Order 0001",
         "ticketnumber": "001",
         "detailline": {
-          "detail": "https://f1.com"
+          "detail": ["https://f1.com", "f1b"]
         }
       },
       {
         "ticketid": "Order 0002",
         "ticketnumber": "002",
         "detailline": {
-          "detail": "https://f2.com"
+          "detail": ["https://f2.com"]
         }
       },
       {
         "ticketid": "Order 0003",
         "ticketnumber": "003",
         "detailline": {
-          "detail": "https://f3.com"
+          "detail": ["https://f3.com", "f3b", "f3c", "f3c"]
         }
       }
     ]
