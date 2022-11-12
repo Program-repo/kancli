@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"strconv"
 
@@ -10,28 +12,15 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-// adding new method to an existing type in Go?
-// type nmDD list.DefaultDelegate
-
-// func (d *nmDD) SetShowDescription(v bool) {
-// 	d.ShowDescription = v
-// }
-
 type item string
 
 func (i item) FilterValue() string { return "" }
 
-type status int
-
 const divisor = 4
 
-var counter int
+var maxCol = 2
 
-const (
-	todo status = iota
-	inProgress
-	done
-)
+var counter int
 
 /* MODEL MANAGEMENT */
 
@@ -55,15 +44,15 @@ var (
 /* CUSTOM ITEM */
 
 type Task struct {
-	status      status
+	status      int //status
 	verified    bool
 	title       string
 	description string
 }
 
 func (t *Task) Next() {
-	if t.status == done {
-		t.status = todo
+	if t.status == maxCol {
+		t.status = 0
 	} else {
 		t.status++
 	}
@@ -84,7 +73,7 @@ func (t Task) Description() string {
 
 type Model struct {
 	loaded   bool
-	focused  status
+	focused  int //status
 	lists    []list.Model
 	err      error
 	quitting bool
@@ -106,12 +95,8 @@ func (m *Model) MoveToNext() tea.Msg {
 	selectedItem := m.lists[m.focused].SelectedItem()
 	selectedTask := selectedItem.(Task)
 	selectedTask.title = "jjjjj"
-	fmt.Println(selectedItem)
-	fmt.Println(selectedTask)
-	// fmt.Println(selectedTask.description)
-	// fmt.Println(m.lists[m.focused].Index())
-	// m.lists[selectedTask.status] [m.lists[m.focused].Index()]
-
+	// fmt.Println(selectedItem)
+	// fmt.Println(selectedTask)
 	m.lists[selectedTask.status].RemoveItem(m.lists[m.focused].Index())
 	selectedTask.Next()
 	m.lists[selectedTask.status].InsertItem(len(m.lists[selectedTask.status].Items())-1, list.Item(selectedTask))
@@ -120,25 +105,43 @@ func (m *Model) MoveToNext() tea.Msg {
 }
 
 func (m *Model) Next() {
-	if m.focused == done {
-		m.focused = todo
-	} else {
-		m.focused++
+	m.focused++
+	if m.focused > maxCol {
+		m.focused = 0
 	}
 }
 
 func (m *Model) Prev() {
-	if m.focused == todo {
-		m.focused = done
-	} else {
-		m.focused--
+	m.focused--
+	if m.focused < 0 {
+		m.focused = maxCol
 	}
 }
 
 func (m *Model) initLists(width, height int) {
+	// Remove item description and spacing
 	lndd := list.NewDefaultDelegate()
 	lndd.ShowDescription = false
 	lndd.SetSpacing(0)
+
+	// Open our jsonFile
+	jsonFile, err := os.Open("Tickets.json")
+	if err != nil {
+		fmt.Println(err)
+	}
+	// defer the closing of our jsonFile so that we can parse it later on
+	defer jsonFile.Close()
+	// read our opened jsonFile as a byte array.
+	byteValue, _ := ioutil.ReadAll(jsonFile)
+	// we initialize our Tickets array
+	var tickets Tickets
+	// we unmarshal our byteArray which contains our
+	// jsonFile's content into 'tickets' which we defined above
+	json.Unmarshal(byteValue, &tickets)
+
+	// we iterate through every user within our tickets array and
+	// print out the user Type, their name, and their facebook url
+	// as just an example
 
 	defaultList := list.New([]list.Item{}, lndd, width/divisor, 15) //height/2)
 	// defaultList := list.New([]list.Item{}, list.NewDefaultDelegate(), width/divisor, 15) //height/2)
@@ -146,28 +149,59 @@ func (m *Model) initLists(width, height int) {
 	m.lists = []list.Model{defaultList, defaultList, defaultList}
 
 	// Init To Do)
-	m.lists[todo].SetFilteringEnabled(false)
-	m.lists[todo].SetShowStatusBar(false)
-	m.lists[todo].Title = "To Do"
-	m.lists[todo].SetItems([]list.Item{
-		Task{status: todo, title: "buy milk", description: "strawberry milk"},
-		Task{status: todo, title: "eat sushi", description: "negitoro roll, miso soup, rice"},
-		Task{status: todo, title: "fold laundry", description: "or wear wrinkly t-shirts"},
-	})
-	// Init in progress
-	m.lists[inProgress].SetFilteringEnabled(false)
-	m.lists[inProgress].SetShowStatusBar(false)
-	m.lists[inProgress].Title = "In Progress"
-	m.lists[inProgress].SetItems([]list.Item{
-		Task{status: inProgress, title: "write code", description: "don't worry, it's Go"},
-	})
-	// Init done
-	m.lists[done].SetFilteringEnabled(false)
-	m.lists[done].SetShowStatusBar(false)
-	m.lists[done].Title = "Done"
-	m.lists[done].SetItems([]list.Item{
-		Task{status: done, title: "stay cool", description: "as a cucumber"},
-	})
+	// m.lists[0].SetFilteringEnabled(false)
+	// m.lists[0].SetShowStatusBar(false)
+	// m.lists[0].Title = "To Do"
+	// m.lists[0].SetItems([]list.Item{
+	// 	Task{status: 0, title: "buy milk", description: "strawberry milk"},
+	// 	Task{status: 0, title: "eat sushi", description: "negitoro roll, miso soup, rice"},
+	// 	Task{status: 0, title: "fold laundry", description: "or wear wrinkly t-shirts"},
+	// })
+	// // Init in progress
+	// m.lists[1].SetFilteringEnabled(false)
+	// m.lists[1].SetShowStatusBar(false)
+	// m.lists[1].Title = "In Progress"
+	// m.lists[1].SetItems([]list.Item{
+	// 	Task{status: 1, title: "write code", description: "don't worry, it's Go"},
+	// })
+	// // Init done
+	// m.lists[2].SetFilteringEnabled(false)
+	// m.lists[2].SetShowStatusBar(false)
+	// m.lists[2].Title = "Done"
+	// m.lists[2].SetItems([]list.Item{
+	// 	Task{status: 2, title: "stay cool", description: "as a cucumber"},
+	// })
+
+	for i := 0; i < len(tickets.Tickets); i++ {
+		// fmt.Println("User Ticketid:" + tickets.Tickets[i].TicketId)
+		// fmt.Println("User TicketN. " + tickets.Tickets[i].TicketNumber)
+		// fmt.Println("User Detail:  " + tickets.Tickets[i].DetailLine.Detail)
+
+		m.lists[i].SetFilteringEnabled(false)
+		m.lists[i].SetShowStatusBar(false)
+		m.lists[i].Title = tickets.Tickets[i].TicketId
+		m.lists[i].SetItems([]list.Item{
+			Task{status: i, title: tickets.Tickets[i].DetailLine.Detail},
+		})
+
+	}
+}
+
+type Tickets struct {
+	Tickets []Ticket `json:"tickets"`
+}
+
+// User struct which contains a name
+// a type and a list of social links
+type Ticket struct {
+	TicketId     string     `json:"ticketid"`
+	TicketNumber string     `json:"ticketnumber"`
+	DetailLine   DetailLine `json:"detailline"`
+}
+
+// list of links
+type DetailLine struct {
+	Detail string `json:"detail"`
 }
 
 func (m Model) Init() tea.Cmd {
@@ -195,7 +229,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "right", "l":
 			m.Next()
 		case "enter":
-			return m, m.MoveToNext
+			// return m, m.MoveToNext
 			// return m, m.itemDone
 		}
 	}
@@ -209,29 +243,16 @@ func (m Model) View() string {
 		return ""
 	}
 
-	var x int
 	var xRender []string
 	if m.loaded {
-
-		for i := 0; i < 3; i++ {
-			switch m.focused {
-			case inProgress:
-				x = 1
-			case done:
-				x = 2
-			default:
-				x = 0
-			}
-
+		for i := 0; i <= maxCol; i++ {
 			xView := m.lists[i].View()
-
-			if x == i {
+			if i == m.focused {
 				xRender = append(xRender, focusedStyle.Render(xView))
 			} else {
 				xRender = append(xRender, columnStyle.Render(xView))
 			}
 		}
-
 	} else {
 		counter++
 		return "loading..." + strconv.Itoa(counter)
@@ -240,38 +261,6 @@ func (m Model) View() string {
 		lipgloss.Left,
 		xRender...,
 	)
-
-	// if m.loaded {
-	// 	todoView := m.lists[todo].View()
-	// 	inProgView := m.lists[inProgress].View()
-	// 	doneView := m.lists[done].View()
-	// 	switch m.focused {
-	// 	case inProgress:
-	// 		return lipgloss.JoinHorizontal(
-	// 			lipgloss.Left,
-	// 			columnStyle.Render(todoView),
-	// 			focusedStyle.Render(inProgView),
-	// 			columnStyle.Render(doneView),
-	// 		)
-	// 	case done:
-	// 		return lipgloss.JoinHorizontal(
-	// 			lipgloss.Left,
-	// 			columnStyle.Render(todoView),
-	// 			columnStyle.Render(inProgView),
-	// 			focusedStyle.Render(doneView),
-	// 		)
-	// 	default:
-	// 		return lipgloss.JoinHorizontal(
-	// 			lipgloss.Left,
-	// 			focusedStyle.Render(todoView),
-	// 			columnStyle.Render(inProgView),
-	// 			columnStyle.Render(doneView),
-	// 		)
-	// 	}
-	// } else {
-	// 	counter++
-	// 	return "loading..." + strconv.Itoa(counter)
-	// }
 }
 
 func main() {
