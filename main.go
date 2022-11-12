@@ -41,12 +41,12 @@ var (
 			Border(lipgloss.NormalBorder(), true, true, true, true).
 			BorderBackground(lipgloss.AdaptiveColor{Light: "#43BFfD", Dark: "#73F5fd"}).
 			BorderStyle(lipgloss.Border{Top: " "}).
-			MarginRight(2)
+			MarginRight(0)
 	columnStyle = lipgloss.NewStyle().
 			Border(lipgloss.NormalBorder(), true, true, true, true).
 			BorderBackground(lipgloss.AdaptiveColor{Light: "#0000ff", Dark: "#0000ff"}).
 			BorderStyle(lipgloss.Border{Top: " "}).
-			MarginRight(2)
+			MarginRight(0)
 
 	// helpStyle = lipgloss.NewStyle().
 	// 		Foreground(lipgloss.Color("241"))
@@ -208,37 +208,70 @@ func (m Model) View() string {
 	if m.quitting {
 		return ""
 	}
+
+	var x int
+	var xRender []string
 	if m.loaded {
-		todoView := m.lists[todo].View()
-		inProgView := m.lists[inProgress].View()
-		doneView := m.lists[done].View()
-		switch m.focused {
-		case inProgress:
-			return lipgloss.JoinHorizontal(
-				lipgloss.Left,
-				columnStyle.Render(todoView),
-				focusedStyle.Render(inProgView),
-				columnStyle.Render(doneView),
-			)
-		case done:
-			return lipgloss.JoinHorizontal(
-				lipgloss.Left,
-				columnStyle.Render(todoView),
-				columnStyle.Render(inProgView),
-				focusedStyle.Render(doneView),
-			)
-		default:
-			return lipgloss.JoinHorizontal(
-				lipgloss.Left,
-				focusedStyle.Render(todoView),
-				columnStyle.Render(inProgView),
-				columnStyle.Render(doneView),
-			)
+
+		for i := 0; i < 3; i++ {
+			switch m.focused {
+			case inProgress:
+				x = 1
+			case done:
+				x = 2
+			default:
+				x = 0
+			}
+
+			xView := m.lists[i].View()
+
+			if x == i {
+				xRender = append(xRender, focusedStyle.Render(xView))
+			} else {
+				xRender = append(xRender, columnStyle.Render(xView))
+			}
 		}
+
 	} else {
 		counter++
 		return "loading..." + strconv.Itoa(counter)
 	}
+	return lipgloss.JoinHorizontal(
+		lipgloss.Left,
+		xRender...,
+	)
+
+	// if m.loaded {
+	// 	todoView := m.lists[todo].View()
+	// 	inProgView := m.lists[inProgress].View()
+	// 	doneView := m.lists[done].View()
+	// 	switch m.focused {
+	// 	case inProgress:
+	// 		return lipgloss.JoinHorizontal(
+	// 			lipgloss.Left,
+	// 			columnStyle.Render(todoView),
+	// 			focusedStyle.Render(inProgView),
+	// 			columnStyle.Render(doneView),
+	// 		)
+	// 	case done:
+	// 		return lipgloss.JoinHorizontal(
+	// 			lipgloss.Left,
+	// 			columnStyle.Render(todoView),
+	// 			columnStyle.Render(inProgView),
+	// 			focusedStyle.Render(doneView),
+	// 		)
+	// 	default:
+	// 		return lipgloss.JoinHorizontal(
+	// 			lipgloss.Left,
+	// 			focusedStyle.Render(todoView),
+	// 			columnStyle.Render(inProgView),
+	// 			columnStyle.Render(doneView),
+	// 		)
+	// 	}
+	// } else {
+	// 	counter++
+	// 	return "loading..." + strconv.Itoa(counter)
+	// }
 }
 
 func main() {
