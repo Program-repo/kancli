@@ -23,7 +23,7 @@ func (i item) FilterValue() string { return "" }
 
 const divisor = 4
 
-var maxCol = 2
+var maxCol = 4
 
 var counter int
 
@@ -64,7 +64,7 @@ type Task struct {
 
 func (t *Task) Next() {
 	t.status++
-	if t.status >= maxCol {
+	if t.status >= maxCol-1 {
 		t.status = 0
 	}
 }
@@ -108,18 +108,15 @@ func (m *Model) MoveToNext() tea.Msg {
 	selectedItem := m.lists[m.focused].SelectedItem()
 	selectedTask := selectedItem.(Task)
 	selectedTask.title = "jjjjj"
-	// fmt.Println(selectedItem)
-	// fmt.Println(selectedTask)
 	m.lists[selectedTask.status].RemoveItem(m.lists[m.focused].Index())
 	selectedTask.Next()
 	m.lists[selectedTask.status].InsertItem(len(m.lists[selectedTask.status].Items())-1, list.Item(selectedTask))
-
 	return nil
 }
 
 func (m *Model) Next() {
 	m.focused++
-	if m.focused > maxCol {
+	if m.focused > maxCol-1 {
 		m.focused = 0
 	}
 }
@@ -127,15 +124,22 @@ func (m *Model) Next() {
 func (m *Model) Prev() {
 	m.focused--
 	if m.focused < 0 {
-		m.focused = maxCol
+		m.focused = maxCol - 1
 	}
 }
 
 func (m *Model) initLists(width, height int) {
-	// Remove item description and spacing
-	lndd := list.NewDefaultDelegate()
-	lndd.ShowDescription = false
-	lndd.SetSpacing(0)
+	// Remove item description and set up spacing
+	listNewDefaultDelegate := list.NewDefaultDelegate()
+	listNewDefaultDelegate.ShowDescription = false
+	listNewDefaultDelegate.SetSpacing(0)
+	defaultList := list.New([]list.Item{}, listNewDefaultDelegate, width/divisor, 15) //height/2)
+	defaultList.SetShowHelp(false)
+	var listModel []list.Model
+	for i := 0; i < maxCol; i++ {
+		listModel = append(listModel, defaultList)
+	}
+	m.lists = listModel
 
 	// Open our jsonFile
 	jsonFile, err := os.Open("Tickets.json")
@@ -151,45 +155,8 @@ func (m *Model) initLists(width, height int) {
 	// we unmarshal our byteArray which contains our
 	// jsonFile's content into 'tickets' which we defined above
 	json.Unmarshal(byteValue, &tickets)
-
-	// we iterate through every user within our tickets array and
-	// print out the user Type, their name, and their facebook url
-	// as just an example
-
-	defaultList := list.New([]list.Item{}, lndd, width/divisor, 15) //height/2)
-	// defaultList := list.New([]list.Item{}, list.NewDefaultDelegate(), width/divisor, 15) //height/2)
-	defaultList.SetShowHelp(false)
-	m.lists = []list.Model{defaultList, defaultList, defaultList}
-
-	// Init To Do)
-	// m.lists[0].SetFilteringEnabled(false)
-	// m.lists[0].SetShowStatusBar(false)
-	// m.lists[0].Title = "To Do"
-	// m.lists[0].SetItems([]list.Item{
-	// 	Task{status: 0, title: "buy milk", description: "strawberry milk"},
-	// 	Task{status: 0, title: "eat sushi", description: "negitoro roll, miso soup, rice"},
-	// 	Task{status: 0, title: "fold laundry", description: "or wear wrinkly t-shirts"},
-	// })
-	// // Init in progress
-	// m.lists[1].SetFilteringEnabled(false)
-	// m.lists[1].SetShowStatusBar(false)
-	// m.lists[1].Title = "In Progress"
-	// m.lists[1].SetItems([]list.Item{
-	// 	Task{status: 1, title: "write code", description: "don't worry, it's Go"},
-	// })
-	// // Init done
-	// m.lists[2].SetFilteringEnabled(false)
-	// m.lists[2].SetShowStatusBar(false)
-	// m.lists[2].Title = "Done"
-	// m.lists[2].SetItems([]list.Item{
-	// 	Task{status: 2, title: "stay cool", description: "as a cucumber"},
-	// })
-
+	// we iterate through every detail line within our tickets
 	for i := 0; i < len(tickets.Tickets); i++ {
-		// fmt.Println("User Ticketid:" + tickets.Tickets[i].TicketId)
-		// fmt.Println("User TicketN. " + tickets.Tickets[i].TicketNumber)
-		// fmt.Println("User Detail:  " + tickets.Tickets[i].DetailLine.Detail)
-
 		m.lists[i].SetFilteringEnabled(false)
 		m.lists[i].SetShowStatusBar(false)
 		m.lists[i].Title = tickets.Tickets[i].TicketId
@@ -198,23 +165,11 @@ func (m *Model) initLists(width, height int) {
 		for j := 0; j < len(tickets.Tickets[i].DetailLine.Detail); j++ {
 			taskslines = append(taskslines, Task{status: i, title: tickets.Tickets[i].DetailLine.Detail[j]})
 		}
-		var ll []list.Item
-		// // ll = []list.Item{}{[]taskslines}
+		var listItem []list.Item
 		for j := 0; j < len(tickets.Tickets[i].DetailLine.Detail); j++ {
-			ll = append(ll, taskslines[j])
+			listItem = append(listItem, taskslines[j])
 		}
-
-		// all := append([]interface{}, tasklines)
-		// fmt.Println(all)
-
-		// fmt.Println(taskslines)
-		// m.lists[i].SetItems([]list.Item{taskslines[0], taskslines[1], taskslines[2], taskslines[3]})
-		m.lists[i].SetItems(ll)
-
-		// fmt.Println(strconv.Itoa(len(tickets.Tickets[i].DetailLine.Detail)))
-		// for j := 0; j < len(tickets.Tickets[i].DetailLine.Detail); j++ {
-		// 	m.lists[i].SetItems([]list.Item{Task{status: i, title: tickets.Tickets[i].DetailLine.Detail[j]}})
-		// }
+		m.lists[i].SetItems(listItem)
 	}
 }
 
@@ -223,7 +178,6 @@ type Tickets struct {
 }
 
 // User struct which contains a name
-// a type and a list of social links
 type Ticket struct {
 	TicketId     string     `json:"ticketid"`
 	TicketNumber string     `json:"ticketnumber"`
@@ -310,7 +264,7 @@ func (m Model) View() string {
 	s := m.timer.View()
 	var xRender []string
 	if m.loaded {
-		for i := 0; i <= maxCol; i++ {
+		for i := 0; i < maxCol; i++ {
 			xView := m.lists[i].View()
 			if i == m.focused {
 				xRender = append(xRender, focusedStyle.Render(xView))

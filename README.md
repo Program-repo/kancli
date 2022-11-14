@@ -25,3 +25,15 @@ Part of [Charm](https://charm.sh).
 <a href="https://charm.sh/"><img alt="The Charm logo" src="https://stuff.charm.sh/charm-badge.jpg" width="400"></a>
 
 Charm热爱开源 • Charm loves open source
+
+## To learn
+
+* A Tour of Go, (https://go.dev/tour/welcome/1)
+* TutorialEdge Golang Courses, (https://tutorialedge.net/course/golang/)
+* Effective Go, (https://go.dev/doc/effective_go.html)
+* Play with Go, (https://play-with-go.dev/)
+* Learn Go With Tests, (https://quii.gitbook.io/learn-go-with-tests/)
+* Getting Started with go.dev, (https://learn.go.dev/)
+* Gopher Reading List, (https://github.com/enocom/gopher-reading-list)
+* Go by Example, (https://gobyexample.com/)
+* Gophercises - coding exercises for budding gophers, (https://gophercises.com/)
