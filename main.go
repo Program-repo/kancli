@@ -6,16 +6,11 @@ import (
 	"io/ioutil"
 	"os"
 	"strconv"
-	"time"
 
-	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
-	"github.com/charmbracelet/bubbles/timer"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
-
-const timeout = time.Second * 5
 
 type item string
 
@@ -26,13 +21,6 @@ const divisor = 4
 var maxCol = 4
 
 var counter int
-
-type keymap struct {
-	start key.Binding
-	stop  key.Binding
-	reset key.Binding
-	quit  key.Binding
-}
 
 /* MODEL MANAGEMENT */
 
@@ -83,8 +71,6 @@ func (t Task) Description() string {
 /* MAIN MODEL */
 
 type Model struct {
-	timer    timer.Model
-	keymap   keymap
 	loaded   bool
 	focused  int //status
 	lists    []list.Model
@@ -190,28 +176,11 @@ type DetailLine struct {
 }
 
 func (m Model) Init() tea.Cmd {
-	return m.timer.Init()
-	// return nil
+	return nil
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-
-	case timer.TickMsg:
-		var cmd tea.Cmd
-		m.timer, cmd = m.timer.Update(msg)
-		return m, cmd
-
-	case timer.StartStopMsg:
-		var cmd tea.Cmd
-		m.timer, cmd = m.timer.Update(msg)
-		m.keymap.stop.SetEnabled(m.timer.Running())
-		m.keymap.start.SetEnabled(!m.timer.Running())
-		return m, cmd
-
-	case timer.TimeoutMsg:
-		m.quitting = true
-		return m, tea.Quit
 	case tea.WindowSizeMsg:
 		if !m.loaded {
 			columnStyle.Width(msg.Width / divisor)
@@ -261,7 +230,6 @@ func (m Model) View() string {
 	if m.quitting {
 		return ""
 	}
-	s := m.timer.View()
 	var xRender []string
 	if m.loaded {
 		for i := 0; i < maxCol; i++ {
@@ -276,7 +244,7 @@ func (m Model) View() string {
 		counter++
 		return "loading..." + strconv.Itoa(counter)
 	}
-	return s + lipgloss.JoinHorizontal(
+	return lipgloss.JoinHorizontal(
 		lipgloss.Left,
 		xRender...,
 	)
