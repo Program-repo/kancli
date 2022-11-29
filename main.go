@@ -6,8 +6,10 @@ import (
 	"io/ioutil"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/charmbracelet/bubbles/list"
+	"github.com/charmbracelet/bubbles/stopwatch"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -16,9 +18,9 @@ type item string
 
 func (i item) FilterValue() string { return "" }
 
-const divisor = 4
+const divisor = 3
 
-var maxCol = 4
+var maxCol = 3
 
 var counter int
 
@@ -71,15 +73,22 @@ func (t Task) Description() string {
 /* MAIN MODEL */
 
 type Model struct {
-	loaded   bool
-	focused  int //status
-	lists    []list.Model
-	err      error
-	quitting bool
+	loaded      bool
+	focused     int //status
+	lists       []list.Model
+	listsheader []listsheader
+	err         error
+	quitting    bool
+	stopwatch   stopwatch.Model
+}
+type listsheader struct {
+	ticketid        string
+	ticketnumber    string
+	ticketordertime time.Time
 }
 
 func New() *Model {
-	return &Model{}
+	return &Model{stopwatch: stopwatch.NewWithInterval(time.Second)}
 }
 
 // func (m *Model) itemDone() tea.Msg {
@@ -127,6 +136,14 @@ func (m *Model) initLists(width, height int) {
 	}
 	m.lists = listModel
 
+	// new f listsheader
+	var listsheaders []listsheader
+	defaultListHeader := listsheader{}
+	for i := 0; i < maxCol; i++ {
+		listsheaders = append(listsheaders, defaultListHeader)
+	}
+	m.listsheader = listsheaders
+
 	// Open our jsonFile
 	jsonFile, err := os.Open("Tickets.json")
 	if err != nil {
@@ -145,7 +162,14 @@ func (m *Model) initLists(width, height int) {
 	for i := 0; i < len(tickets.Tickets); i++ {
 		m.lists[i].SetFilteringEnabled(false)
 		m.lists[i].SetShowStatusBar(false)
-		m.lists[i].Title = tickets.Tickets[i].TicketId
+
+		// fmt.Println(tickets.Tickets[i].TicketId)
+		// fmt.Println(tickets.Tickets[i].TicketNumber)
+		// fmt.Println(tickets.Tickets[i].TicketOrderTime)
+		m.listsheader[i].ticketid = tickets.Tickets[i].TicketId
+		m.listsheader[i].ticketnumber = tickets.Tickets[i].TicketNumber
+		m.listsheader[i].ticketordertime = tickets.Tickets[i].TicketOrderTime
+		m.lists[i].Title = ""
 
 		var taskslines []Task
 		for j := 0; j < len(tickets.Tickets[i].DetailLine.Detail); j++ {
@@ -165,9 +189,10 @@ type Tickets struct {
 
 // User struct which contains a name
 type Ticket struct {
-	TicketId     string     `json:"ticketid"`
-	TicketNumber string     `json:"ticketnumber"`
-	DetailLine   DetailLine `json:"detailline"`
+	TicketId        string     `json:"ticketid"`
+	TicketNumber    string     `json:"ticketnumber"`
+	TicketOrderTime time.Time  `json:"ticketordertime"`
+	DetailLine      DetailLine `json:"detailline"`
 }
 
 // list of links
@@ -176,7 +201,8 @@ type DetailLine struct {
 }
 
 func (m Model) Init() tea.Cmd {
-	return nil
+	return m.stopwatch.Init()
+	// return nil
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -189,6 +215,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			focusedStyle.Height(15)    //(msg.Height - divisor)
 			m.initLists(msg.Width, 15) //msg.Height)
 			m.loaded = true
+
 		}
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -220,9 +247,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// 		return m, m.timer.Toggle()
 		// 	}
 	}
-
 	var cmd tea.Cmd
-	m.lists[m.focused], cmd = m.lists[m.focused].Update(msg)
+	if m.loaded {
+		m.lists[m.focused], cmd = m.lists[m.focused].Update(msg)
+	}
+	m.stopwatch, cmd = m.stopwatch.Update(msg)
+	// currentTime := time.Now()
+	// fmt.Println("Current Time in String: ", currentTime.String())
+
 	return m, cmd
 }
 
@@ -230,9 +262,18 @@ func (m Model) View() string {
 	if m.quitting {
 		return ""
 	}
+
 	var xRender []string
 	if m.loaded {
 		for i := 0; i < maxCol; i++ {
+			// fmt.Println(len(m.lists[i].Title))
+			// fmt.Println(m.lists[i].Title)
+			wticketid := m.listsheader[i].ticketid
+			wtordert := m.listsheader[i].ticketordertime
+			currentTime := time.Now()
+			result := currentTime.Sub(wtordert)
+			m.lists[i].Title = wticketid + " " + result.String()
+
 			xView := m.lists[i].View()
 			if i == m.focused {
 				xRender = append(xRender, focusedStyle.Render(xView))
