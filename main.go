@@ -18,7 +18,7 @@ type item string
 
 func (i item) FilterValue() string { return "" }
 
-const divisor = 3
+const divisor = 4
 
 var maxCol = 3
 
@@ -38,6 +38,19 @@ var (
 			BorderBackground(lipgloss.AdaptiveColor{Light: "#0000ff", Dark: "#0000ff"}).
 			BorderStyle(lipgloss.Border{Top: " "}).
 			MarginRight(0)
+	titleStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#FFFDF5")).
+			Background(lipgloss.Color("#25A065")).
+			Padding(0, 1)
+	styledef = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#FAFAFA")).
+			Background(lipgloss.Color("#6ad257"))
+	styleyew = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#FAFAFA")).
+			Background(lipgloss.Color("#Cad257"))
+	stylered = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#FCF6F5FF")).
+			Background(lipgloss.Color("#990011FF"))
 
 	// helpStyle = lipgloss.NewStyle().
 	// 		Foreground(lipgloss.Color("241"))
@@ -88,7 +101,7 @@ type listsheader struct {
 }
 
 func New() *Model {
-	return &Model{stopwatch: stopwatch.NewWithInterval(time.Second)}
+	return &Model{stopwatch: stopwatch.NewWithInterval(time.Second * 5)}
 }
 
 // func (m *Model) itemDone() tea.Msg {
@@ -136,16 +149,18 @@ func (m *Model) initLists(width, height int) {
 	}
 	m.lists = listModel
 
-	// new f listsheader
+	// new for listsheader
 	var listsheaders []listsheader
 	defaultListHeader := listsheader{}
 	for i := 0; i < maxCol; i++ {
 		listsheaders = append(listsheaders, defaultListHeader)
 	}
 	m.listsheader = listsheaders
+}
 
+func (m *Model) readData(filename string) {
 	// Open our jsonFile
-	jsonFile, err := os.Open("Tickets.json")
+	jsonFile, err := os.Open(filename)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -163,9 +178,6 @@ func (m *Model) initLists(width, height int) {
 		m.lists[i].SetFilteringEnabled(false)
 		m.lists[i].SetShowStatusBar(false)
 
-		// fmt.Println(tickets.Tickets[i].TicketId)
-		// fmt.Println(tickets.Tickets[i].TicketNumber)
-		// fmt.Println(tickets.Tickets[i].TicketOrderTime)
 		m.listsheader[i].ticketid = tickets.Tickets[i].TicketId
 		m.listsheader[i].ticketnumber = tickets.Tickets[i].TicketNumber
 		m.listsheader[i].ticketordertime = tickets.Tickets[i].TicketOrderTime
@@ -214,8 +226,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			columnStyle.Height(15)     //msg.Height - divisor)
 			focusedStyle.Height(15)    //(msg.Height - divisor)
 			m.initLists(msg.Width, 15) //msg.Height)
+			m.readData("Tickets.json")
 			m.loaded = true
-
 		}
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -271,8 +283,19 @@ func (m Model) View() string {
 			wticketid := m.listsheader[i].ticketid
 			wtordert := m.listsheader[i].ticketordertime
 			currentTime := time.Now()
-			result := currentTime.Sub(wtordert)
-			m.lists[i].Title = wticketid + " " + result.String()
+			diff := currentTime.Sub(wtordert)
+			out := time.Time{}.Add(diff)
+
+			m.lists[i].Styles.Title = titleStyle
+			m.lists[i].Title = wticketid + " "
+			switch {
+			case diff.Minutes() > 10:
+				m.lists[i].Title += stylered.Render(out.Format("04:05"))
+			case diff.Minutes() > 5:
+				m.lists[i].Title += styleyew.Render(out.Format("04:05"))
+			default:
+				m.lists[i].Title += styledef.Render(out.Format("04:05"))
+			}
 
 			xView := m.lists[i].View()
 			if i == m.focused {
