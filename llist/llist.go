@@ -58,13 +58,12 @@ func (l *LinkedList[T]) PushBack(value T) {
 		l.tail = newNode
 	}
 	l.length++
-
 }
 
 func (l *LinkedList[T]) DeleteAt(index int) error {
-	size := l.length
+	// size := l.length
 	// special case: input index is out of range, return error
-	if index < 0 || index > size-1 {
+	if index < 0 || index > l.length-1 { //size-1 {
 		return fmt.Errorf("index out of range")
 	}
 	// special case: index is 0, delete at head by use DeleteAtHead method
