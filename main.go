@@ -87,15 +87,15 @@ func (t Task) Description() string {
 /* MAIN MODEL */
 
 type Model struct {
-	loaded      bool
-	focused     int //status
-	lists       []list.Model
-	listsheader []listsheader
-	err         error
-	quitting    bool
-	stopwatch   stopwatch.Model
-	linkl       *llist.LinkedList[[]list.Item]
-	linklsd     *llist.LinkedList[linklsdet]
+	loaded  bool
+	focused int //status
+	lists   []list.Model
+	// listsheader []listsheader
+	err       error
+	quitting  bool
+	stopwatch stopwatch.Model
+	// linkl       *llist.LinkedList[[]list.Item]
+	linklsd *llist.LinkedList[linklsdet]
 }
 type linklsdet struct {
 	ticketitems     []list.Item
@@ -160,15 +160,16 @@ func (m *Model) initLists(width, height int) {
 	m.lists = listModel
 
 	// new for listsheader
-	var listsheaders []listsheader
-	defaultListHeader := listsheader{}
-	for i := 0; i < maxCol; i++ {
-		listsheaders = append(listsheaders, defaultListHeader)
-	}
-	m.listsheader = listsheaders
+	// var listsheaders []listsheader
+	// defaultListHeader := listsheader{}
+	// for i := 0; i < maxCol; i++ {
+	// 	listsheaders = append(listsheaders, defaultListHeader)
+	// }
+	// m.listsheader = listsheaders
 }
 
-func (m *Model) readData(filename string, ll *llist.LinkedList[[]list.Item], li *llist.LinkedList[linklsdet]) {
+// func (m *Model) readData(filename string, ll *llist.LinkedList[[]list.Item], li *llist.LinkedList[linklsdet]) {
+func (m *Model) readData(filename string, li *llist.LinkedList[linklsdet]) {
 	// Open our jsonFile
 	jsonFile, err := os.Open(filename)
 	if err != nil {
@@ -191,9 +192,9 @@ func (m *Model) readData(filename string, ll *llist.LinkedList[[]list.Item], li 
 		m.lists[i].SetFilteringEnabled(false)
 		m.lists[i].SetShowStatusBar(false)
 
-		m.listsheader[i].ticketid = tickets.Tickets[i].TicketId
-		m.listsheader[i].ticketnumber = tickets.Tickets[i].TicketNumber
-		m.listsheader[i].ticketordertime = tickets.Tickets[i].TicketOrderTime
+		// m.listsheader[i].ticketid = tickets.Tickets[i].TicketId
+		// m.listsheader[i].ticketnumber = tickets.Tickets[i].TicketNumber
+		// m.listsheader[i].ticketordertime = tickets.Tickets[i].TicketOrderTime
 		m.lists[i].Title = ""
 
 		// m.linklsd.ticketid = tickets.Tickets[i].TicketId
@@ -210,8 +211,8 @@ func (m *Model) readData(filename string, ll *llist.LinkedList[[]list.Item], li 
 		}
 		// m.lists[i].SetItems(listItem)
 
-		ll.PushBack(listItem)
-		fmt.Println(ll)
+		// ll.PushBack(listItem)
+		// fmt.Println(ll)
 		// m.linklsd.ticketitems = listItem
 		li.PushBack(linklsdet{
 			ticketitems:     listItem,
@@ -223,7 +224,9 @@ func (m *Model) readData(filename string, ll *llist.LinkedList[[]list.Item], li 
 	}
 }
 
-func (m *Model) refreshData(ll *llist.LinkedList[[]list.Item], li *llist.LinkedList[linklsdet]) {
+// func (m *Model) refreshData(ll *llist.LinkedList[[]list.Item], li *llist.LinkedList[linklsdet]) {
+
+func (m *Model) refreshData(li *llist.LinkedList[linklsdet]) {
 	// fmt.Println(ll)
 	// node := ll.Head()
 	// i := 0
@@ -278,10 +281,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			columnStyle.Height(15)     //msg.Height - divisor)
 			focusedStyle.Height(15)    //(msg.Height - divisor)
 			m.initLists(msg.Width, 15) //msg.Height)
-			m.linkl = llist.New[[]list.Item]()
+			// m.linkl = llist.New[[]list.Item]()
 			m.linklsd = llist.New[linklsdet]()
-			m.readData("Tickets.json", m.linkl, m.linklsd)
-			m.refreshData(m.linkl, m.linklsd)
+			// m.readData("Tickets.json", m.linkl, m.linklsd)
+			// m.refreshData(m.linkl, m.linklsd)
+			m.readData("Tickets.json", m.linklsd)
+			m.refreshData(m.linklsd)
+
 			m.linklsd.DeleteAt(1)
 			m.loaded = true
 		}
@@ -319,7 +325,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	if m.loaded {
 		m.lists[m.focused], cmd = m.lists[m.focused].Update(msg)
-		m.refreshData(m.linkl, m.linklsd)
+		// m.refreshData(m.linkl, m.linklsd)
+		m.refreshData(m.linklsd)
 	}
 	m.stopwatch, cmd = m.stopwatch.Update(msg)
 	// currentTime := time.Now()
