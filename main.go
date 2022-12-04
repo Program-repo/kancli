@@ -87,24 +87,16 @@ func (t Task) Description() string {
 /* MAIN MODEL */
 
 type Model struct {
-	loaded  bool
-	focused int //status
-	lists   []list.Model
-	// listsheader []listsheader
+	loaded    bool
+	focused   int //status
+	lists     []list.Model
 	err       error
 	quitting  bool
 	stopwatch stopwatch.Model
-	// linkl       *llist.LinkedList[[]list.Item]
-	linklsd *llist.LinkedList[linklsdet]
+	linklsd   *llist.LinkedList[linklsdet]
 }
 type linklsdet struct {
 	ticketitems     []list.Item
-	ticketid        string
-	ticketnumber    string
-	ticketordertime time.Time
-}
-
-type listsheader struct {
 	ticketid        string
 	ticketnumber    string
 	ticketordertime time.Time
@@ -122,19 +114,20 @@ func New() *Model {
 // 	return nil
 // }
 
-func (m *Model) MoveToNext() tea.Msg {
-	selectedItem := m.lists[m.focused].SelectedItem()
-	selectedTask := selectedItem.(Task)
-	selectedTask.title = "jjjjj"
-	m.lists[selectedTask.status].RemoveItem(m.lists[m.focused].Index())
-	selectedTask.Next()
-	m.lists[selectedTask.status].InsertItem(len(m.lists[selectedTask.status].Items())-1, list.Item(selectedTask))
-	return nil
-}
+// func (m *Model) MoveToNext() tea.Msg {
+// 	selectedItem := m.lists[m.focused].SelectedItem()
+// 	selectedTask := selectedItem.(Task)
+// 	selectedTask.title = "jjjjj"
+// 	m.lists[selectedTask.status].RemoveItem(m.lists[m.focused].Index())
+// 	selectedTask.Next()
+// 	m.lists[selectedTask.status].InsertItem(len(m.lists[selectedTask.status].Items())-1, list.Item(selectedTask))
+// 	return nil
+// }
 
 func (m *Model) Next() {
 	m.focused++
-	if m.focused > maxCol-1 {
+	if m.focused > m.linklsd.Length()-1 {
+		// if m.focused > maxCol-1 {
 		m.focused = 0
 	}
 }
@@ -142,7 +135,8 @@ func (m *Model) Next() {
 func (m *Model) Prev() {
 	m.focused--
 	if m.focused < 0 {
-		m.focused = maxCol - 1
+		// m.focused = maxCol - 1
+		m.focused = m.linklsd.Length() - 1
 	}
 }
 
@@ -158,17 +152,8 @@ func (m *Model) initLists(width, height int) {
 		listModel = append(listModel, defaultList)
 	}
 	m.lists = listModel
-
-	// new for listsheader
-	// var listsheaders []listsheader
-	// defaultListHeader := listsheader{}
-	// for i := 0; i < maxCol; i++ {
-	// 	listsheaders = append(listsheaders, defaultListHeader)
-	// }
-	// m.listsheader = listsheaders
 }
 
-// func (m *Model) readData(filename string, ll *llist.LinkedList[[]list.Item], li *llist.LinkedList[linklsdet]) {
 func (m *Model) readData(filename string, li *llist.LinkedList[linklsdet]) {
 	// Open our jsonFile
 	jsonFile, err := os.Open(filename)
@@ -186,20 +171,10 @@ func (m *Model) readData(filename string, li *llist.LinkedList[linklsdet]) {
 	json.Unmarshal(byteValue, &tickets)
 	// we iterate through every detail line within our tickets
 
-	// linkedlist := llist.New[[]list.Item]()
-
 	for i := 0; i < len(tickets.Tickets); i++ {
 		m.lists[i].SetFilteringEnabled(false)
 		m.lists[i].SetShowStatusBar(false)
-
-		// m.listsheader[i].ticketid = tickets.Tickets[i].TicketId
-		// m.listsheader[i].ticketnumber = tickets.Tickets[i].TicketNumber
-		// m.listsheader[i].ticketordertime = tickets.Tickets[i].TicketOrderTime
 		m.lists[i].Title = ""
-
-		// m.linklsd.ticketid = tickets.Tickets[i].TicketId
-		// m.linklsd.ticketnumber = tickets.Tickets[i].TicketNumber
-		// m.linklsd.ticketordertime = tickets.Tickets[i].TicketOrderTime
 
 		var taskslines []Task
 		for j := 0; j < len(tickets.Tickets[i].DetailLine.Detail); j++ {
@@ -209,11 +184,6 @@ func (m *Model) readData(filename string, li *llist.LinkedList[linklsdet]) {
 		for j := 0; j < len(tickets.Tickets[i].DetailLine.Detail); j++ {
 			listItem = append(listItem, taskslines[j])
 		}
-		// m.lists[i].SetItems(listItem)
-
-		// ll.PushBack(listItem)
-		// fmt.Println(ll)
-		// m.linklsd.ticketitems = listItem
 		li.PushBack(linklsdet{
 			ticketitems:     listItem,
 			ticketid:        tickets.Tickets[i].TicketId,
@@ -224,27 +194,13 @@ func (m *Model) readData(filename string, li *llist.LinkedList[linklsdet]) {
 	}
 }
 
-// func (m *Model) refreshData(ll *llist.LinkedList[[]list.Item], li *llist.LinkedList[linklsdet]) {
-
 func (m *Model) refreshData(li *llist.LinkedList[linklsdet]) {
-	// fmt.Println(ll)
-	// node := ll.Head()
-	// i := 0
-	// for node != nil {
-	// 	// fmt.Println(node.Value())
-	// 	// m.lists[i].SetItems(node.Value())
-	// 	i++
-	// 	// 	fmt.Println("i ", i, "head ", ll.Head())
-	// 	node = node.Next()
-	// }
-
 	nodei := li.Head()
 	i := 0
 	for nodei != nil {
-		fmt.Println(nodei.Value().ticketid)
+		// fmt.Println(nodei.Value().ticketid)
 		m.lists[i].SetItems(nodei.Value().ticketitems)
 		i++
-		fmt.Println("head li ", li.Head(), " ticketid ", li.Head().Value().ticketid)
 		nodei = nodei.Next()
 	}
 
@@ -269,7 +225,6 @@ type DetailLine struct {
 
 func (m Model) Init() tea.Cmd {
 	return m.stopwatch.Init()
-	// return nil
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -281,14 +236,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			columnStyle.Height(15)     //msg.Height - divisor)
 			focusedStyle.Height(15)    //(msg.Height - divisor)
 			m.initLists(msg.Width, 15) //msg.Height)
-			// m.linkl = llist.New[[]list.Item]()
 			m.linklsd = llist.New[linklsdet]()
-			// m.readData("Tickets.json", m.linkl, m.linklsd)
-			// m.refreshData(m.linkl, m.linklsd)
 			m.readData("Tickets.json", m.linklsd)
 			m.refreshData(m.linklsd)
 
-			m.linklsd.DeleteAt(1)
+			m.linklsd.DeleteAt(2)
 			m.loaded = true
 		}
 	case tea.KeyMsg:
@@ -325,12 +277,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	if m.loaded {
 		m.lists[m.focused], cmd = m.lists[m.focused].Update(msg)
-		// m.refreshData(m.linkl, m.linklsd)
 		m.refreshData(m.linklsd)
 	}
 	m.stopwatch, cmd = m.stopwatch.Update(msg)
-	// currentTime := time.Now()
-	// fmt.Println("Current Time in String: ", currentTime.String())
 
 	return m, cmd
 }
@@ -379,58 +328,6 @@ func (m Model) View() string {
 		xRender...,
 	)
 }
-
-// func (m Model) View() string {
-// 	if m.quitting {
-// 		return ""
-// 	}
-
-// 	var xRender []string
-// 	if m.loaded {
-// 		// fmt.Println("lenght", m.linkl.Length())
-// 		fmt.Println("lenght i", m.linklsd.Length())
-// 		for i := 0; i < m.linklsd.Length(); i++ { //maxCol; i++ { //}
-// 			// fmt.Println(len(m.lists[i].Title))
-// 			// fmt.Println(m.lists[i].Title)
-// 			nodei := m.linklsd.Head()
-
-// 			wticketid := nodei.Value().ticketid
-// 			wticketid := m.linklsd.Head().Value().ticketid
-// 			// wticketid := m.listsheader[i].ticketid
-// 			// wtordert := m.listsheader[i].ticketordertime
-// 			wtordert := m.linklsd.Head().Next().Value().ticketordertime
-
-// 			currentTime := time.Now()
-// 			diff := currentTime.Sub(wtordert)
-// 			out := time.Time{}.Add(diff)
-
-// 			m.lists[i].Styles.Title = titleStyle
-// 			m.lists[i].Title = wticketid + " "
-// 			switch {
-// 			case diff.Minutes() > 10:
-// 				m.lists[i].Title += stylered.Render(out.Format("04:05"))
-// 			case diff.Minutes() > 5:
-// 				m.lists[i].Title += styleyew.Render(out.Format("04:05"))
-// 			default:
-// 				m.lists[i].Title += styledef.Render(out.Format("04:05"))
-// 			}
-
-// 			xView := m.lists[i].View()
-// 			if i == m.focused {
-// 				xRender = append(xRender, focusedStyle.Render(xView))
-// 			} else {
-// 				xRender = append(xRender, columnStyle.Render(xView))
-// 			}
-// 		}
-// 	} else {
-// 		counter++
-// 		return "loading..." + strconv.Itoa(counter)
-// 	}
-// 	return lipgloss.JoinHorizontal(
-// 		lipgloss.Left,
-// 		xRender...,
-// 	)
-// }
 
 func main() {
 
