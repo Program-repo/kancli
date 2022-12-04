@@ -15,9 +15,9 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-type item string
+// type item string
 
-func (i item) FilterValue() string { return "" }
+// func (i item) FilterValue() string { return "" }
 
 const divisor = 4
 
@@ -195,13 +195,13 @@ func (m *Model) readData(filename string, li *llist.LinkedList[linklsdet]) {
 }
 
 func (m *Model) refreshData(li *llist.LinkedList[linklsdet]) {
-	nodei := li.Head()
+	node := li.Head()
 	i := 0
-	for nodei != nil {
+	for node != nil {
 		// fmt.Println(nodei.Value().ticketid)
-		m.lists[i].SetItems(nodei.Value().ticketitems)
+		m.lists[i].SetItems(node.Value().ticketitems)
 		i++
-		nodei = nodei.Next()
+		node = node.Next()
 	}
 
 }
@@ -240,7 +240,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.readData("Tickets.json", m.linklsd)
 			m.refreshData(m.linklsd)
 
-			m.linklsd.DeleteAt(2)
+			// m.linklsd.DeleteAt(2)
 			m.loaded = true
 		}
 	case tea.KeyMsg:
@@ -258,6 +258,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// The "down" and "j" keys move the cursor down
 		case "down", "j":
 		case "enter":
+			m.linklsd.DeleteAt(m.focused)
+			m.refreshData(m.linklsd)
 			// return m, m.MoveToNext
 			// return m, m.itemDone
 		}
