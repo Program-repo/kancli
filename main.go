@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"kancli-demo/llist"
 	"os"
 	"strconv"
 	"time"
@@ -158,7 +159,7 @@ func (m *Model) initLists(width, height int) {
 	m.listsheader = listsheaders
 }
 
-func (m *Model) readData(filename string) {
+func (m *Model) readData(filename string, ll *llist.LinkedList[[]list.Item]) {
 	// Open our jsonFile
 	jsonFile, err := os.Open(filename)
 	if err != nil {
@@ -174,6 +175,9 @@ func (m *Model) readData(filename string) {
 	// jsonFile's content into 'tickets' which we defined above
 	json.Unmarshal(byteValue, &tickets)
 	// we iterate through every detail line within our tickets
+
+	// linkedlist := llist.New[[]list.Item]()
+
 	for i := 0; i < len(tickets.Tickets); i++ {
 		m.lists[i].SetFilteringEnabled(false)
 		m.lists[i].SetShowStatusBar(false)
@@ -191,8 +195,26 @@ func (m *Model) readData(filename string) {
 		for j := 0; j < len(tickets.Tickets[i].DetailLine.Detail); j++ {
 			listItem = append(listItem, taskslines[j])
 		}
-		m.lists[i].SetItems(listItem)
+		// m.lists[i].SetItems(listItem)
+
+		ll.PushBack(listItem)
+		fmt.Println(ll)
+
 	}
+}
+
+func (m *Model) refreshData(ll *llist.LinkedList[[]list.Item]) {
+	ll.DeleteAt(1)
+
+	node := ll.Head()
+	i := 0
+	for node != nil {
+		fmt.Println(node.Value())
+		m.lists[i].SetItems(node.Value())
+		i++
+		node = node.Next()
+	}
+
 }
 
 type Tickets struct {
@@ -226,7 +248,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			columnStyle.Height(15)     //msg.Height - divisor)
 			focusedStyle.Height(15)    //(msg.Height - divisor)
 			m.initLists(msg.Width, 15) //msg.Height)
-			m.readData("Tickets.json")
+			Linkedlist := llist.New[[]list.Item]()
+			m.readData("Tickets.json", Linkedlist)
+			m.refreshData(Linkedlist)
 			m.loaded = true
 		}
 	case tea.KeyMsg:
@@ -259,6 +283,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// 		return m, m.timer.Toggle()
 		// 	}
 	}
+	// m.refreshData(Linkedlist)
 	var cmd tea.Cmd
 	if m.loaded {
 		m.lists[m.focused], cmd = m.lists[m.focused].Update(msg)
@@ -315,6 +340,7 @@ func (m Model) View() string {
 }
 
 func main() {
+
 	m := New()
 	p := tea.NewProgram(m, tea.WithAltScreen())
 	if err := p.Start(); err != nil {
