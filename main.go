@@ -39,6 +39,11 @@ var (
 			BorderBackground(lipgloss.AdaptiveColor{Light: "#0000ff", Dark: "#0000ff"}).
 			BorderStyle(lipgloss.Border{Top: " "}).
 			MarginRight(0)
+	flineStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#FFFDF5")).
+			Background(lipgloss.Color("#283465")).
+			Padding(0, 1).
+			Height(1)
 	titleStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#FFFDF5")).
 			Background(lipgloss.Color("#25A065")).
@@ -87,6 +92,7 @@ func (t Task) Description() string {
 /* MAIN MODEL */
 
 type Model struct {
+	fline     string
 	loaded    bool
 	focused   int //status
 	lists     []list.Model
@@ -103,31 +109,14 @@ type linklsdet struct {
 }
 
 func New() *Model {
-	return &Model{stopwatch: stopwatch.NewWithInterval(time.Second * 5)}
+	return &Model{
+		stopwatch: stopwatch.NewWithInterval(time.Second * 5),
+	}
 }
-
-// func (m *Model) itemDone() tea.Msg {
-// selectedItem := m.lists[m.focused].SelectedItem()
-// selectedTask := selectedItem.(Task)
-// list.Item(selectedTask)
-// selectedItem.(status: todo, done: true, title: "buy milk", description: "strawberry milk")
-// 	return nil
-// }
-
-// func (m *Model) MoveToNext() tea.Msg {
-// 	selectedItem := m.lists[m.focused].SelectedItem()
-// 	selectedTask := selectedItem.(Task)
-// 	selectedTask.title = "jjjjj"
-// 	m.lists[selectedTask.status].RemoveItem(m.lists[m.focused].Index())
-// 	selectedTask.Next()
-// 	m.lists[selectedTask.status].InsertItem(len(m.lists[selectedTask.status].Items())-1, list.Item(selectedTask))
-// 	return nil
-// }
 
 func (m *Model) Next() {
 	m.focused++
 	if m.focused > m.linklsd.Length()-1 {
-		// if m.focused > maxCol-1 {
 		m.focused = 0
 	}
 }
@@ -135,7 +124,6 @@ func (m *Model) Next() {
 func (m *Model) Prev() {
 	m.focused--
 	if m.focused < 0 {
-		// m.focused = maxCol - 1
 		m.focused = m.linklsd.Length() - 1
 	}
 }
@@ -195,15 +183,15 @@ func (m *Model) readData(filename string, li *llist.LinkedList[linklsdet]) {
 }
 
 func (m *Model) refreshData(li *llist.LinkedList[linklsdet]) {
+	// fmt.Println(m.focused)
+
 	node := li.Head()
 	i := 0
 	for node != nil {
-		// fmt.Println(nodei.Value().ticketid)
 		m.lists[i].SetItems(node.Value().ticketitems)
 		i++
 		node = node.Next()
 	}
-
 }
 
 type Tickets struct {
@@ -259,7 +247,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "down", "j":
 		case "enter":
 			m.linklsd.DeleteAt(m.focused)
-			m.refreshData(m.linklsd)
+			m.focused = 0
+			// m.refreshData(m.linklsd)
 			// return m, m.MoveToNext
 			// return m, m.itemDone
 		}
@@ -292,12 +281,17 @@ func (m Model) View() string {
 	}
 	var xRender []string
 	if m.loaded {
+		// first line
+		currentTime := time.Now()
+		xct := currentTime.Format("2006-01-02 15:04:05")
+		m.fline = "Barbecue " + xct + "                                                          "
+		xRenderfline := flineStyle.Render(m.fline)
+
 		node := m.linklsd.Head()
 		i := 0
 		for node != nil {
 			wticketid := node.Value().ticketid
 			wtordert := node.Value().ticketordertime
-			currentTime := time.Now()
 			diff := currentTime.Sub(wtordert)
 			out := time.Time{}.Add(diff)
 
@@ -321,14 +315,15 @@ func (m Model) View() string {
 			i++
 			node = node.Next()
 		}
+		return lipgloss.JoinVertical(lipgloss.Top, lipgloss.PlaceHorizontal(80, lipgloss.Left, xRenderfline),
+			lipgloss.JoinHorizontal(lipgloss.Left, xRender...),
+		)
+
 	} else {
 		counter++
 		return "loading..." + strconv.Itoa(counter)
 	}
-	return lipgloss.JoinHorizontal(
-		lipgloss.Left,
-		xRender...,
-	)
+
 }
 
 func main() {
