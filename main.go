@@ -19,7 +19,7 @@ import (
 
 // func (i item) FilterValue() string { return "" }
 
-const divisor = 4
+const divisor = 3
 
 var maxCol = 3
 
@@ -65,18 +65,19 @@ var (
 /* CUSTOM ITEM */
 
 type Task struct {
-	status      int //status
-	verified    bool
+	status int //status
+	// verified    bool
 	title       string
 	description string
 }
 
-func (t *Task) Next() {
-	t.status++
-	if t.status >= maxCol-1 {
-		t.status = 0
-	}
-}
+// func (t *Task) Next() {
+// 	fmt.Println("que es ", t)
+// 	t.status++
+// 	if t.status >= maxCol-1 {
+// 		t.status = 0
+// 	}
+// }
 
 // implement the list.Item interface
 func (t Task) FilterValue() string { return "" }
@@ -131,7 +132,7 @@ func (m *Model) Prev() {
 func (m *Model) initLists(width, height int) {
 	// Remove item description and set up spacing
 	listNewDefaultDelegate := list.NewDefaultDelegate()
-	listNewDefaultDelegate.ShowDescription = false
+	listNewDefaultDelegate.ShowDescription = true //false
 	listNewDefaultDelegate.SetSpacing(0)
 	defaultList := list.New([]list.Item{}, listNewDefaultDelegate, width/divisor, 15) //height/2)
 	defaultList.SetShowHelp(false)
@@ -247,10 +248,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "down", "j":
 		case "enter":
 			m.linklsd.DeleteAt(m.focused)
-			m.focused = 0
-			// m.refreshData(m.linklsd)
-			// return m, m.MoveToNext
-			// return m, m.itemDone
+			if m.focused == m.linklsd.Length() && m.linklsd.Length() != 0 {
+				m.focused--
+			}
 		}
 
 		// case tea.KeyMsg:
